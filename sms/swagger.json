@@ -1,0 +1,923 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "SMS",
+    "version": "1.0.0",
+    "description": "The SMS API exposes the telco SMS functionality as an API. It allows to send and retrieve inbound SMS messages. By default, /sms/outboundmessages or /sms/inboundmessages/shared should be used. Most of the other resources (such as dedicatedaddresses) require a manual setup from the EnCo support team before they can be used."
+  },
+  "tags": [
+    {
+      "name": "Outbound",
+      "description": "Outbound messaging is about sending SMS from your application. /sms/outboundmessages is the main resource, the other ones are optional."
+    },
+    {
+      "name": "Inbound",
+      "description": "Inbound messaging is about receiving SMS sent to your application. /sms/inboundmessages/shared is the main resource, the other ones are optional. "
+    }
+  ],
+  "schemes": [
+    "https"
+  ],
+  "host": "api.enco.io",
+  "basePath": "/sms/1.0.0",
+  "securityDefinitions": {
+    "EnCo Application": {
+      "type": "oauth2",
+      "tokenUrl": "https://api.enco.io/token",
+      "flow": "application",
+      "scopes": {}
+    }
+  },
+  "security": [
+    {
+      "EnCo Application": []
+    }
+  ],
+  "paths": {
+    "/sms/outboundmessages": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Default method to send SMS messages in an easy way",
+        "description": "This resource allows to send an SMS to a specified destination using a shared address (such as \"8937\" for Belgium) as the origin number. The shared number is free of charge, works \"out-of-the-box\" and is ideal if inbound SMS is not critical to your application.",
+        "parameters": [
+          {
+            "name": "forceCharacterLimit",
+            "description": "Whether to stop if more than one SMS needs to be sent (use either forceCharacterLimit or forceCharacterLimit=true). Default is false",
+            "required": false,
+            "in": "query",
+            "type": "boolean"
+          },
+          {
+            "$ref": "#/parameters/SMSMessage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The initial delivery information for the sent SMS. Use the resourceUrl to query for updated delivery information.",
+            "schema": {
+              "$ref": "#/definitions/SMSDeliveryInfoResponse"
+            }
+          },
+          "400": {
+            "description": "If SMS message is invalid, or character limit has been enabled but the limit has been exceeded.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/sms/outboundmessages/length": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Useful if you know nothing about SMS message lenght characteritics",
+        "description": "SMS messages can be one-part or multi-parts. It can contain special characters or not. Since EnCo charges per SMS part, you may want to know how many parts are required to send the message or how many characters are left in the current part...",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SMSMessage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The SMS message length report including the number of characters, number of SMS parts and the number of characters per part (when using special characters, a different encoding is used resulting in less allowed characters per part)",
+            "schema": {
+              "$ref": "#/definitions/SMSMessageLengthResponse"
+            }
+          },
+          "400": {
+            "description": "A user error; this could be returned when your message is invalid (e.g. syntax errors) or the request is not understandable by this endpoint.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/sms/outboundmessages/deliveryinfos/{id}": {
+      "get": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "The delivery status of a message with a specific id",
+        "description": "SMS messages are not always delivered due to the recipient's device being turned-off or out-of-reach. If it is important for you to know which messages have been delivered then you should use that service. The initial status is always \"MessageWaiting\" and the final status can be \"DeliveredToTerminal\". Note that DeliveredToTerminal doesn't mean that the message was read...",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The deliveryInfo id to be requested",
+            "required": true,
+            "in": "path",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The delivery information for the given id.",
+            "schema": {
+              "$ref": "#/definitions/SMSDeliveryInfoResponse"
+            }
+          },
+          "404": {
+            "description": "If no delivery exists for the given id",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/sms/outboundmessages/{address}": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "This is can be used to send from a specific number that you own",
+        "description": "To use that service, you should first request EnCo support to add at least one dedicated address (aka \"own number\") to your list of /dedicatedaddresses. This requires a manual configuration (send your request to support@enco.io). Once you have a list of own numbers, you can then send SMS messages from those numbers as origin",
+        "parameters": [
+          {
+            "name": "address",
+            "description": "A dedicated address that you own and want to use as the originating number",
+            "required": true,
+            "in": "path",
+            "type": "string"
+          },
+          {
+            "name": "forceCharacterLimit",
+            "description": "Whether to stop if more than one SMS needs to be sent (use either forceCharacterLimit or forceCharacterLimit=true). Default is false",
+            "required": false,
+            "in": "query",
+            "type": "boolean"
+          },
+          {
+            "$ref": "#/parameters/SMSMessage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The initial delivery information for the sent SMS. Use the resourceUrl to query for updated delivery information.",
+            "schema": {
+              "$ref": "#/definitions/SMSDeliveryInfoResponse"
+            }
+          },
+          "400": {
+            "description": "If SMS message is invalid, or character limit has been enabled but the limit has been exceeded.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "403": {
+            "description": "You don't have ownership over the specified address.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/sms/inboundmessages/shared": {
+      "get": {
+        "tags": [
+          "Inbound"
+        ],
+        "summary": "Retrieving messages that end-users have sent to a shared number",
+        "description": "For inbound messages on shared numbers, first your application needs to send a message to a certain destination before it can get a response from that destination. The routing of the end-user's responses back to your application is not 100% guaranteed as there may be other applications sending to the same destination. You should use a dedicated address or keywords if you wish to guarantee that end users' messages are routed to your application. The service should be used in a polling mode but you can also use the EnCo CloudEngine to use it in a push mode.",
+        "parameters": [
+          {
+            "name": "startdatetime",
+            "description": "The start timestamp of the interval for which you're retrieving messages.",
+            "required": true,
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "enddatetime",
+            "description": "The end timestamp of the interval for which you're retrieving messages.",
+            "required": true,
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "new-only",
+            "description": "Retrieve only message that haven't been retrieved before.",
+            "required": true,
+            "in": "query",
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of SMS received messages.",
+            "schema": {
+              "$ref": "#/definitions/SMSInboundResponse"
+            }
+          },
+          "400": {
+            "description": "If SMS message is invalid, or character limit has been enabled but the limit has been exceeded.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/sms/inboundmessages/{address}": {
+      "get": {
+        "tags": [
+          "Inbound"
+        ],
+        "summary": "Retrieve the list of messages that have been sent from end-users to a dedicated number owned by you",
+        "description": "If your main use of the SMS API is around people sending messages to your application that can then process those messages, then you should have a dedicated address. This service allows you to retrieve all the messages sent to one of your dedicated number (dedicated numbers should be requested to support@enco.io). The service should be used in a polling mode but you can also use the EnCo CloudEngine to use it in a push mode.",
+        "parameters": [
+          {
+            "name": "address",
+            "description": "A dedicated address that you own and want to query inbound messages for.",
+            "required": true,
+            "in": "path",
+            "type": "string"
+          },
+          {
+            "name": "startdatetime",
+            "description": "The start timestamp of the interval for which you're retrieving messages.",
+            "required": true,
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "enddatetime",
+            "description": "The end timestamp of the interval for which you're retrieving messages.",
+            "required": true,
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "new-only",
+            "description": "Retrieve only message that haven't been retrieved before.",
+            "required": true,
+            "in": "query",
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of SMS received messages.",
+            "schema": {
+              "$ref": "#/definitions/SMSInboundResponse"
+            }
+          },
+          "400": {
+            "description": "If SMS message is invalid, or character limit has been enabled but the limit has been exceeded.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "403": {
+            "description": "You don't have ownership over the specified address.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/sms/inboundmessages/keywords/{keyword}": {
+      "get": {
+        "tags": [
+          "Inbound"
+        ],
+        "summary": "Inbound messages starting with a specific keyword are routed to your application",
+        "description": "Keywords are useful if you only use a shared number and you wish to retrieve messages from end-users whether or not the communication was first initiated by your application. It can also allow you to separate messaging campaigns or services using the same shared number (example: all customer feedback with keyword \"ENCO-QUALITY\" could be properly routed to EnCo support team. Keywords must be requested to support@enco.io. When configured, you can get your list of keywords using /sms/keywords.",
+        "parameters": [
+          {
+            "name": "keyword",
+            "description": "A keyword that you own and want to query inbound messages for.",
+            "required": true,
+            "in": "path",
+            "type": "string"
+          },
+          {
+            "name": "startdatetime",
+            "description": "The start timestamp of the interval for which you're retrieving messages.",
+            "required": true,
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "enddatetime",
+            "description": "The end timestamp of the interval for which you're retrieving messages.",
+            "required": true,
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "new-only",
+            "description": "Retrieve only message that haven't been retrieved before.",
+            "required": true,
+            "in": "query",
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of SMS received messages.",
+            "schema": {
+              "$ref": "#/definitions/SMSInboundResponse"
+            }
+          },
+          "400": {
+            "description": "If SMS message is invalid, or character limit has been enabled but the limit has been exceeded.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "403": {
+            "description": "You don't have ownership over the specified keyword.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/sms/dedicatedaddresses": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "This is the list of your own dedicated numbers",
+        "description": "Dedicated addresses are used to send SMS messages from a number that is your own number (origin number). To add or delete numbers from this list, you should make a request to support@enco.io",
+        "responses": {
+          "200": {
+            "description": "A list of dedicated addresses owned by your account.",
+            "schema": {
+              "$ref": "#/definitions/DedicatedAddressResponse"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/sms/keywords": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "This is the list of your own keywords",
+        "description": "Keywords are useful if you only use a shared number and you wish to retrieve messages from end-users whether or not the communication was first initiated by your application. To add or delete numbers from this list, you should make a request to support@enco.io",
+        "responses": {
+          "200": {
+            "description": "A list of keywords owned by your account.",
+            "schema": {
+              "$ref": "#/definitions/KeywordResponse"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/logs": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "Returns log lines for the SMS API (sent and received SMS messages with their delivery status and number of SMS parts)",
+        "description": "Your application can have its own logging. However, you can also retrieve some logs using this EnCo service (e.g. for troubleshooting, billing or reporting purposes). Logs are kept for a maximum period of 2 months.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/log_type"
+          },
+          {
+            "$ref": "#/parameters/log_address"
+          },
+          {
+            "$ref": "#/parameters/log_year"
+          },
+          {
+            "$ref": "#/parameters/log_month"
+          },
+          {
+            "$ref": "#/parameters/log_function"
+          },
+          {
+            "$ref": "#/parameters/log_startTime"
+          },
+          {
+            "$ref": "#/parameters/log_endTime"
+          },
+          {
+            "$ref": "#/parameters/paging_page"
+          },
+          {
+            "$ref": "#/parameters/paging_pageref"
+          },
+          {
+            "$ref": "#/parameters/paging_limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested log entries.",
+            "schema": {
+              "$ref": "#/definitions/logs_interval_response"
+            }
+          },
+          "500": {
+            "description": "Server error; there was an unexpected error during the processing of your request.",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "log_type": {
+      "name": "type",
+      "description": "Logs are divided in different types. Three different types are defined: sms-outbound, providing information about sent SMS messages; sms-outbound-error, providing information about SMS messages for which sending failed; and sms-inbound, providing information about messages received on a shared or dedicated number.",
+      "required": true,
+      "in": "query",
+      "type": "string",
+      "enum": [
+        "sms-outbound",
+        "sms-outbound-error",
+        "sms-inbound"
+      ]
+    },
+    "log_address": {
+      "name": "dedicatedaddress",
+      "description": "A dedicated address for which logs should be retrieved. If not provided, logs will be retrieved for theshared address.",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "log_year": {
+      "name": "year",
+      "description": "The year for which the logs should be retrieved.",
+      "required": true,
+      "in": "query",
+      "type": "integer"
+    },
+    "log_month": {
+      "name": "month",
+      "description": "The month for which the logs should be retrieved.",
+      "required": true,
+      "in": "query",
+      "type": "integer"
+    },
+    "log_function": {
+      "name": "function",
+      "description": "The function to be used to aggregate the logs. Two functions are defined: \"interval\", giving a list with all the logs in your defined interval and \"groupByDay\", giving you an overview of the amount of logs made per day in the defined interval.",
+      "required": true,
+      "in": "query",
+      "type": "string",
+      "enum": [
+        "interval",
+        "groupByDay"
+      ]
+    },
+    "log_startTime": {
+      "name": "startTime",
+      "description": "The start time of the interval to query logs in.",
+      "required": false,
+      "in": "query",
+      "type": "string",
+      "format": "date-time"
+    },
+    "log_endTime": {
+      "name": "endTime",
+      "description": "The end time of the interval to query logs in.",
+      "required": false,
+      "in": "query",
+      "type": "string",
+      "format": "date-time"
+    },
+    "paging_page": {
+      "name": "page",
+      "description": "The current page to show when using pagination.",
+      "required": false,
+      "in": "query",
+      "type": "integer"
+    },
+    "paging_pageref": {
+      "name": "pageref",
+      "description": "The page reference used for paging. Check the \"Link\" header to find references to different pages.",
+      "required": false,
+      "in": "query",
+      "type": "string",
+      "format": "date-time"
+    },
+    "paging_limit": {
+      "name": "limit",
+      "description": "The maximum number of results per page. The default is 200.",
+      "required": false,
+      "in": "query",
+      "type": "integer",
+      "default": 200,
+      "maximum": 200
+    },
+    "SMSMessage": {
+      "name": "encoSMSMessage",
+      "description": "The payload to send an SMS message.",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "properties": {
+          "message": {
+            "description": "The actual SMS message to be sent.",
+            "example": "This is an example SMS message.",
+            "type": "string"
+          },
+          "binary": {
+            "description": "Wether this message is a binary message. When using binary, the message should be in hexadecimal format. To be able to send Binary SMS, the feature should be enabled on your account. Ask Support for more information.",
+            "type": "boolean",
+            "default": false
+          },
+          "destinations": {
+            "type": "array",
+            "description": "A list with a single number to send the message to. Multiple numbers are not (yet) supported. Numbers should be formatted in an international format: \"+&lt;country code&gt;&lt;number&gt;\"",
+            "minItems": 1,
+            "maxItems": 1,
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "+32470000000"
+            ]
+          },
+          "callbackURL": {
+            "type": "string",
+            "description": "An unsecured HTTP endpoint where delivery info updates will be sent to. As soon as final delivery information state is known, a message is sent to this endpoint.",
+            "example": "https://example.com"
+          }
+        },
+        "required": [
+          "message",
+          "destinations"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "SMSDeliveryInfoResponse": {
+      "type": "object",
+      "description": "A list of delivery information for a certain outbound interaction with the API.",
+      "properties": {
+        "resourceURL": {
+          "type": "string",
+          "description": "An URL that points to the endpoint where new delivery info's can be retrieved from.",
+          "example": "https://api.enco.io/sms/1.0.0/sms/outboundmessages/deliveryinfos/example-id"
+        },
+        "deliveryInfo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SMSDeliveryInfoDetail"
+          }
+        }
+      },
+      "required": [
+        "resourceURL",
+        "deliveryInfo"
+      ]
+    },
+    "SMSDeliveryInfoDetail": {
+      "type": "object",
+      "description": "Information about the delivery status of a sent SMS message",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "The number where the SMS messages was sent to.",
+          "example": "+32470000000"
+        },
+        "deliveryStatus": {
+          "type": "string",
+          "description": "The status of the delivery.",
+          "enum": [
+            "AddressInvalid",
+            "MessageWaiting",
+            "DeliveredToNetwork",
+            "DeliveryUncertain",
+            "DeliveryImpossible",
+            "DeliveredToTerminal"
+          ]
+        }
+      },
+      "required": [
+        "address",
+        "deliveryStatus"
+      ]
+    },
+    "SMSMessageLengthResponse": {
+      "type": "object",
+      "description": "The length report of the analysed message",
+      "properties": {
+        "numberOfChars": {
+          "type": "integer",
+          "description": "The total number of characters in the provided message"
+        },
+        "numberOfParts": {
+          "type": "integer",
+          "description": "The number of SMS parts that will be generated for your message. A message is split into different parts depending on the length of your message."
+        },
+        "charLimitPerPart": {
+          "type": "integer",
+          "description": "The maximum number of characters allowed per part. This depends on the encoding used to send special characters."
+        },
+        "numberOfRemainingCharsInPart": {
+          "type": "integer",
+          "description": "The number of characters remaining before a new part is started."
+        },
+        "numberOfRemainingParts": {
+          "type": "integer",
+          "description": "The number of remaining parts you can use. The maximum number of parts is 6."
+        }
+      },
+      "required": [
+        "numberOfChars",
+        "numberOfParts",
+        "charLimitPerPart",
+        "numberOfRemainingCharsInPart",
+        "numberOfRemainingParts"
+      ]
+    },
+    "SMSInboundResponse": {
+      "type": "object",
+      "description": "A list of received SMS messages.",
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SMSInboundMessage"
+          }
+        },
+        "numberOfMessages": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "messages",
+        "numberOfMessages"
+      ]
+    },
+    "SMSInboundMessage": {
+      "type": "object",
+      "description": "A received SMS message.",
+      "properties": {
+        "senderAddress": {
+          "type": "string",
+          "description": "The number from which the SMS message was sent from."
+        },
+        "message": {
+          "type": "string",
+          "description": "The actual SMS message that was received."
+        },
+        "numberOfParts": {
+          "type": "integer",
+          "description": "The number of parts in this SMS message."
+        },
+        "timeReceived": {
+          "type": "string",
+          "description": "The timestamp when the SMS was received. In ISO8601 format.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "senderAddress",
+        "message",
+        "numberOfParts",
+        "timeReceived"
+      ],
+      "example": {
+        "senderAddress": "+32470000000",
+        "message": "This is an example inbound message",
+        "numberOfParts": 1,
+        "timeReceived": "2018-01-01T13:10:00.000Z"
+      }
+    },
+    "DedicatedAddressResponse": {
+      "type": "object",
+      "description": "A list of dedicated addresses you own.",
+      "properties": {
+        "dedicatedAddresses": {
+          "type": "array",
+          "description": "The dedicated address, you can use this address to send messages from.",
+          "items": {
+            "type": "string"
+          },
+          "example": "4321"
+        }
+      },
+      "required": [
+        "dedicatedAddresses"
+      ]
+    },
+    "KeywordResponse": {
+      "type": "object",
+      "description": "A list of keywords you own. When a message is sent to the shared number, you'll be able to fetch it as an inbound messages if the message starts with one of these keywords.",
+      "properties": {
+        "keywords": {
+          "type": "array",
+          "description": "The keyword.",
+          "items": {
+            "type": "string"
+          },
+          "example": "MYKEYWORD"
+        }
+      },
+      "required": [
+        "keywords"
+      ]
+    },
+    "logs_interval_response": {
+      "type": "array",
+      "description": "A list of logs within the requested time interval.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer",
+            "description": "The index of this log on this timestamp. Some logs happen with the exact same timestamp, this number can be used to distinguish them."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when this log was made."
+          },
+          "numberOfChars": {
+            "type": "string",
+            "description": "A string representation of the amount of characters that where sent in the message"
+          },
+          "destinationAddress": {
+            "type": "string",
+            "description": "The number where the SMS message was sent to."
+          },
+          "originAddress": {
+            "type": "string",
+            "description": "The number from which the SMS was sent."
+          },
+          "requestId": {
+            "type": "string",
+            "description": "The delivery information id. Use this ID to fetch the delivery information for this message."
+          },
+          "initialDeliveryInfo": {
+            "type": "string",
+            "description": "The initial delivery info received when sending the message.",
+            "enum": [
+              "AddressInvalid",
+              "MessageWaiting",
+              "DeliveredToNetwork",
+              "DeliveryUncertain",
+              "DeliveryImpossible",
+              "DeliveredToTerminal"
+            ]
+          },
+          "httpResponseCode": {
+            "type": "string"
+          },
+          "numberOfMessages": {
+            "type": "string",
+            "description": "The amount of messages that were sent."
+          },
+          "message": {
+            "type": "string",
+            "description": "The actual SMS message that was sent."
+          }
+        }
+      }
+    },
+    "errorMessage": {
+      "description": "A placeholder for reporting a simple error message in addition to the HTTP status code.",
+      "type": "object",
+      "properties": {
+        "fault": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "description": "The primary descriptive error message - either in the primary language of the server or translated into a language negotiated via the HTTP header Accept-Language.",
+              "type": "string"
+            },
+            "description": {
+              "description": "An optional descriptive text targeted at the client developer.",
+              "type": "string"
+            },
+            "code": {
+              "description": "A mandatory, application-specific error code; if none is specified, it will hold the HTTP status code.",
+              "type": "integer"
+            },
+            "info": {
+              "description": "A reference to a fault reference or support page.",
+              "type": "string",
+              "format": "uri"
+            },
+            "details": {
+              "description": "An optional array of clarifying data related to the fault that occurred, which are useful to show to the end user for him/her to rectify the situation.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/errorDetail"
+              }
+            }
+          },
+          "required": [
+            "message",
+            "code"
+          ]
+        }
+      },
+      "required": [
+        "fault"
+      ]
+    },
+    "errorDetail": {
+      "description": "Structure to hold complete information about a specific internal error.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "field",
+            "rule"
+          ]
+        },
+        "identifier": {
+          "type": "string",
+          "format": "uri"
+        },
+        "message": {
+          "description": "The primary descriptive error message - either in the primary language of the server or translated into a language negotiated via the HTTP header Accept-Language.",
+          "type": "string"
+        },
+        "description": {
+          "description": "An optional descriptive text targeted at the client developer.",
+          "type": "string"
+        },
+        "value": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "type",
+        "message"
+      ]
+    }
+  }
+}

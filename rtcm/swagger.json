@@ -1,0 +1,889 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "RTCM",
+    "version": "1.0.0",
+    "description": "Follow the heartbeat of your activity by streaming mobile data in real-time. This API allows you to define zones of interest. For these zones you can set up a stream towards your own application. The API will stream updates of the number of people within that zone, divided over a set of grids.\n\nThe data is sourced from the cellular location of handsets connected to the proximus network and is then extrapolated to map to the full population of Belgium.\nMore documentation is available at [docs.enco.io](//docs.enco.io)"
+  },
+  "schemes": [
+    "https"
+  ],
+  "host": "api.enco.io",
+  "basePath": "/rtcm/1.0.0",
+  "securityDefinitions": {
+    "EnCo Application": {
+      "type": "oauth2",
+      "tokenUrl": "https://api.enco.io/token",
+      "flow": "application",
+      "scopes": {}
+    }
+  },
+  "security": [
+    {"EnCo Application": []}
+  ],
+  "tags": [
+    {
+      "name": "zones",
+      "description": "A zone is an area you can define by specifying a polygon or a center point and radius. Zones will be divided in bins, the size of these bins depend on the size of your zone."
+    },
+    {
+      "name": "streams",
+      "description": "A stream is an activation of the data delivery related to a certain zone."
+    }
+  ],
+  "paths": {
+    "/zones": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "description": "Returns a list of zones defined for your account",
+        "responses": {
+          "200": {
+            "description": "List of zones",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/zone"
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "zones"
+        ],
+        "description": "Define a new zone. Zones are defined using a WKT string, it is required that this WKT string is either a Polygon or a Point. When defining a zone with a point, please use the radius property to set a radius around this point.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/zoneDefinition"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "New zone was successfully defined",
+            "schema": {
+              "$ref": "#/definitions/zone"
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "409": {
+            "description": "Zone already exists; a zone with the provided name already exists",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/zones/info": {
+      "post": {
+        "tags": [
+          "zones"
+        ],
+        "description": "Get information about a new zone without defining it. Use this method to try out how big a zone will be and in how much bins it will be divided.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/zoneDefinitionInfo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The information about the zone defined in the wkt",
+            "schema": {
+              "$ref": "#/definitions/zone"
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/zones/{name}": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "description": "Get information about a zone with given name",
+        "parameters": [
+          {
+            "name": "name",
+            "description": "the unique name of the zone",
+            "required": true,
+            "in": "path",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The zone",
+            "schema": {
+              "$ref": "#/definitions/zone"
+            }
+          },
+          "404": {
+            "description": "The zone with given name was not found",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "zones"
+        ],
+        "description": "Delete a zone with given name",
+        "parameters": [
+          {
+            "name": "name",
+            "description": "the unique name of the zone",
+            "required": true,
+            "in": "path",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The zone was successfully deleted"
+          },
+          "404": {
+            "description": "The zone with given name was not found",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/streams": {
+      "get": {
+        "tags": [
+          "streams"
+        ],
+        "description": "Get a list of streams",
+        "responses": {
+          "200": {
+            "description": "List of streams",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/stream"
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "streams"
+        ],
+        "description": "Setup a new stream. Please note that we execute a 'REST OPTIONS call' towards the provided endpoint. If we can't reach the endpoint, the stream will not be made.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/streamDefinition"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Stream definition accepted, see Location header to check status"
+          },
+          "400": {
+            "description": "Validation error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/streams/{id}": {
+      "get": {
+        "tags": [
+          "streams"
+        ],
+        "description": "Fetch the stream definition with given id",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "the id of the stream",
+            "required": true,
+            "in": "path",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The stream",
+            "schema": {
+              "$ref": "#/definitions/stream"
+            }
+          },
+          "404": {
+            "description": "The stream with given id was not found",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "streams"
+        ],
+        "description": "Stop and delete a stream with given id",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "the id of the stream",
+            "required": true,
+            "in": "path",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The stream",
+            "schema": {
+              "$ref": "#/definitions/stream"
+            }
+          },
+          "404": {
+            "description": "The stream with given id was not found",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    },
+    "/logs": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Returns log lines for the RTCM api",
+        "parameters": [
+          {
+            "$ref": "#/parameters/log_type"
+          },
+          {
+            "$ref": "#/parameters/log_year"
+          },
+          {
+            "$ref": "#/parameters/log_month"
+          },
+          {
+            "$ref": "#/parameters/log_function"
+          },
+          {
+            "$ref": "#/parameters/log_startTime"
+          },
+          {
+            "$ref": "#/parameters/log_endTime"
+          },
+          {
+            "$ref": "#/parameters/paging_page"
+          },
+          {
+            "$ref": "#/parameters/paging_pageref"
+          },
+          {
+            "$ref": "#/parameters/paging_limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested log entries",
+            "schema": {
+              "$ref": "#/definitions/logs_response"
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/errorMessage"
+            }
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "log_type": {
+      "name": "type",
+      "description": "type of logs",
+      "required": true,
+      "in": "query",
+      "type": "string",
+      "enum": [
+        "stream-error"
+      ]
+    },
+    "log_year": {
+      "name": "year",
+      "description": "year in which log should be retrieved",
+      "required": true,
+      "in": "query",
+      "type": "integer"
+    },
+    "log_month": {
+      "name": "month",
+      "description": "month in which log should be retrieved",
+      "required": true,
+      "in": "query",
+      "type": "integer"
+    },
+    "log_function": {
+      "name": "function",
+      "description": "function to be used to aggregate the logs",
+      "required": true,
+      "in": "query",
+      "type": "string",
+      "enum": [
+        "interval",
+        "groupByDay"
+      ]
+    },
+    "log_startTime": {
+      "name": "startTime",
+      "description": "start time to be used to aggregate the logs",
+      "required": false,
+      "in": "query",
+      "type": "string",
+      "format": "date-time"
+    },
+    "log_endTime": {
+      "name": "endTime",
+      "description": "end time to be used to aggregate the logs",
+      "required": false,
+      "in": "query",
+      "type": "string",
+      "format": "date-time"
+    },
+    "paging_page": {
+      "name": "page",
+      "description": "current page to show",
+      "required": false,
+      "in": "query",
+      "type": "integer"
+    },
+    "paging_pageref": {
+      "name": "pageref",
+      "description": "page reference used for paging",
+      "required": false,
+      "in": "query",
+      "type": "string",
+      "format": "date-time"
+    },
+    "paging_limit": {
+      "name": "limit",
+      "description": "limit number of results",
+      "required": false,
+      "in": "query",
+      "type": "integer"
+    },
+    "zoneDefinitionInfo": {
+      "name": "zone",
+      "description": "a definition of a zone",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "title": "Zone definition",
+        "properties": {
+          "wkt": {
+            "type": "string",
+            "description": "The WKT definition of a POLYGON or a POINT. It is of great importance that the WKT is provided in the  [Lambert azimuthal equal-area projection EPSG:3035](https://epsg.io/3035).",
+            "example": "POLYGON((147992.37037851268541999 171140.3114748140797019,148327.26604031922761351 169484.9866275554522872,149342.73670030888752081 170290.42919835727661848,149916.56873450794955716 172050.96815691515803337,147992.37037851268541999 171140.3114748140797019))"
+          },
+          "radius": {
+            "type": "integer",
+            "description": "A radius in meters around the POINT defiend in wkt (in meters)"
+          }
+        },
+        "required": [
+          "wkt"
+        ],
+        "example": {
+          "wkt": "POLYGON((147992.37037851268541999 171140.3114748140797019,148327.26604031922761351 169484.9866275554522872,149342.73670030888752081 170290.42919835727661848,149916.56873450794955716 172050.96815691515803337,147992.37037851268541999 171140.3114748140797019))"
+        }
+      }
+    },
+    "zoneDefinition": {
+      "name": "zone",
+      "description": "a definition of a zone",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "title": "Zone definition",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "the name for the zone; this value should be unique for your account"
+          },
+          "wkt": {
+            "type": "string",
+            "description": "The WKT definition of a POLYGON or a POINT. It is of great importance that the WKT is provided in the  [Lambert azimuthal equal-area projection EPSG:3035](https://epsg.io/3035).",
+            "example": "POLYGON((147992.37037851268541999 171140.3114748140797019,148327.26604031922761351 169484.9866275554522872,149342.73670030888752081 170290.42919835727661848,149916.56873450794955716 172050.96815691515803337,147992.37037851268541999 171140.3114748140797019))"
+          },
+          "radius": {
+            "type": "integer",
+            "description": "A radius in meters around the POINT defiend in wkt (in meters)"
+          }
+        },
+        "required": [
+          "name",
+          "wkt"
+        ],
+        "example": {
+          "name": "MyNewZone",
+          "wkt": "POLYGON((147992.37037851268541999 171140.3114748140797019,148327.26604031922761351 169484.9866275554522872,149342.73670030888752081 170290.42919835727661848,149916.56873450794955716 172050.96815691515803337,147992.37037851268541999 171140.3114748140797019))"
+        }
+      }
+    },
+    "streamDefinition": {
+      "name": "stream",
+      "description": "a definition of a stream",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "title": "Stream definition",
+        "properties": {
+          "zoneName": {
+            "type": "string",
+            "description": "The name of the zone for which the stream needs to be set up"
+          },
+          "endpoint": {
+            "$ref": "#/definitions/endpoint"
+          },
+          "interval": {
+            "description": "the interval in minutes at which updates should be streamed",
+            "type": "integer",
+            "enum": [
+              1,
+              5
+            ]
+          },
+          "duration": {
+            "description": "the duration in hours of how long the stream should send updates",
+            "type": "integer",
+            "enum": [
+              1,
+              3,
+              6,
+              12
+            ]
+          },
+          "timeStart": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "zoneName",
+          "interval",
+          "duration",
+          "endpoint"
+        ],
+        "example": {
+          "zoneName": "MyDefinedZone",
+          "interval": 5,
+          "duration": 1,
+          "endpoint": {
+            "type": "HTTP",
+            "address": "https://example.com/rtcm-inbound",
+            "authorization": {
+              "type": "BASIC",
+              "username": "my_username",
+              "password": "my_password"
+            }
+          },
+          "timeStart": "2018-04-01T13:01:01Z"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "zone": {
+      "title": "Zone",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "the unique name of the zone"
+        },
+        "wkt": {
+          "type": "string",
+          "description": "the WKT definition of the zone"
+        },
+        "surface": {
+          "type": "number",
+          "description": "the total surface area of the zone (in square meters)"
+        },
+        "granularity": {
+          "type": "integer",
+          "description": "the width/length of the bins in meters"
+        },
+        "bins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/gridBin"
+          }
+        }
+      },
+      "required": [
+        "wkt",
+        "surface",
+        "granularity",
+        "bins"
+      ],
+      "example": {
+        "name": "MyZone",
+        "wkt": "POLYGON((...))",
+        "surface": 3000000,
+        "granularity": 250,
+        "bins": [
+          {
+            "cellcode": "250m...E...N",
+            "wkt": "POLYGON((...))"
+          }
+        ]
+      }
+    },
+    "stream": {
+      "title": "Stream",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "the unique ID of the stream"
+        },
+        "zoneName": {
+          "type": "string",
+          "description": "the name of the zone"
+        },
+        "endpoint": {
+          "$ref": "#/definitions/endpoint"
+        },
+        "state": {
+          "type": "string",
+          "description": "the state of the stream",
+          "enum": [
+            "ACTIVE",
+            "PENDING",
+            "STOPPED"
+          ]
+        },
+        "interval": {
+          "description": "the interval in minutes at which updates should be streamed",
+          "type": "integer",
+          "enum": [
+            1,
+            5
+          ]
+        },
+        "duration": {
+          "description": "the duration in hours of how long the stream should send updates",
+          "type": "integer",
+          "enum": [
+            1,
+            3,
+            6,
+            12
+          ]
+        },
+        "timeStart": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timeEnd": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "zoneName",
+        "endpoint",
+        "state",
+        "interval",
+        "duration"
+      ],
+      "example": {
+        "id": "12345",
+        "zoneName": "myDefinedZone",
+        "endpoint": {
+          "type": "HTTP",
+          "address": "https://example.com/rtcm-inbound",
+          "authorization": {
+            "type": "BASIC",
+            "username": "my_username",
+            "password": "my_password"
+          }
+        },
+        "state": "PENDING",
+        "interval": 1,
+        "duration": 1,
+        "timeStart": "2018-04-01T13:01:01Z",
+        "timeEnd": "2018-04-01T14:01:01Z"
+      }
+    },
+    "gridBin": {
+      "title": "Grid Bin",
+      "type": "object",
+      "properties": {
+        "cellcode": {
+          "type": "string",
+          "description": "the unique ID of the bin in the standard grid."
+        },
+        "wkt": {
+          "type": "string",
+          "description": "the WKT definition of the bin"
+        }
+      },
+      "required": [
+        "cellcode",
+        "wkt"
+      ],
+      "example": {
+        "cellcode": "1kmE5432N4321",
+        "wkt": "POLYGON((...))"
+      }
+    },
+    "endpoint": {
+      "title": "Endpoint",
+      "description": "The HTTP endpoint where the data needs to be forwarded to",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "the endpoint type",
+          "enum": [
+            "HTTP"
+          ]
+        },
+        "address": {
+          "type": "string",
+          "description": "the endpoint address"
+        },
+        "authorization": {
+          "$ref": "#/definitions/authorization"
+        }
+      },
+      "required": [
+        "type",
+        "address"
+      ],
+      "example": {
+        "type": "HTTP",
+        "address": "https://example.com/rtcm-inbound",
+        "authorization": {
+          "type": "BASIC",
+          "username": "my_username",
+          "password": "my_password"
+        }
+      }
+    },
+    "authorization": {
+      "title": "Authorization",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "the authorization type",
+          "enum": [
+            "NONE",
+            "BASIC"
+          ]
+        },
+        "username": {
+          "type": "string",
+          "description": "the username for the authorization type"
+        },
+        "password": {
+          "type": "string",
+          "description": "the password for the authorization type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "example": {
+        "type": "BASIC",
+        "username": "my_username",
+        "password": "my_password"
+      }
+    },
+    "logs_response": {
+      "title": "Logs",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "requestParameters": {
+            "type": "string"
+          },
+          "httpResponseCode": {
+            "type": "string"
+          },
+          "faultResponseDetail": {
+            "type": "string"
+          },
+          "responseId": {
+            "type": "string"
+          },
+          "errorDescription": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "errorMessage": {
+      "title": "Error",
+      "description": "a placeholder for reporting a simple error message in addition to the HTTP status code",
+      "type": "object",
+      "properties": {
+        "fault": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "description": "the primary descriptive error message - either in the primary language of the server or translated into a language negotiated via the HTTP header Accept-Language",
+              "type": "string"
+            },
+            "description": {
+              "description": "an optional descriptive text targeted at the client developer",
+              "type": "string"
+            },
+            "code": {
+              "description": "a mandatory, application-specific error code; if none is specified, it will hold the HTTP status code",
+              "type": "integer"
+            },
+            "info": {
+              "description": "a reference to a fault reference or support page",
+              "type": "string",
+              "format": "uri"
+            },
+            "details": {
+              "description": "an optional array of clarifying data related to the fault that occurred, which are useful to show to the end user for him/her to rectify the situation",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/errorDetail"
+              }
+            }
+          },
+          "required": [
+            "message",
+            "code"
+          ]
+        }
+      },
+      "required": [
+        "fault"
+      ]
+    },
+    "errorDetail": {
+      "title": "Error detail",
+      "description": "structure to hold complete information about a specific internal error",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "field",
+            "rule"
+          ]
+        },
+        "identifier": {
+          "type": "string",
+          "format": "uri"
+        },
+        "message": {
+          "description": "the primary descriptive error message - either in the primary language of the server or translated into a language negotiated via the HTTP header Accept-Language",
+          "type": "string"
+        },
+        "description": {
+          "description": "an optional descriptive text targeted at the client developer",
+          "type": "string"
+        },
+        "value": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "type",
+        "message"
+      ]
+    }
+  }
+}
